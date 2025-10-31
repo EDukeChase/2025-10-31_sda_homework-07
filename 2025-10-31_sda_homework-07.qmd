@@ -9,10 +9,6 @@ date: today
 
 library(here)
 source(here::here("R", "setup.R"))
-
-# Set key directory paths
-data_dir <- here::here("data")
-output_dir <- here::here("output")
 ```
 
 The `ox.rda` file contains 126 soil augerings on a 100 x 100m square grid, with 6 columns and 21 rows. Grid is oriented with long axis North-north-west to South-south-east Origin of grid is South-south-east point, 100m outside grid.
@@ -33,11 +29,42 @@ Then:
 2. Use the `sf` `data.frame` to construct a `gstat` object using `k` as the response with a constant mean. 
 3. Construct a `geodata` object (from the **geoR** package) with `k` as the response.
 
+```{r}
+#| label: preprocessing
+
+# Use the `ox` data frame to create an `sf` object using `x` and `y` as
+# coordinates.
+load(here("data", "ox.rda"))
+ox_sf <- sf::st_as_sf(ox, coords = c("x", "y"))
+
+# Use the `sf` `data.frame` to construct a `gstat` object using `k` as the
+# response with a constant mean. 
+ox_gs <- gstat(id = "k", formula = k ~ 1, data = ox_sf)
+
+# Construct a `geodata` object (from the **geoR** package) with `k` as the
+# response.
+ox_gr <- as.geodata(cbind(ox$x, ox$y, ox$k))
+```
+
+
 # Problem 1 
 
-Create a bubble plot of the observed data using 10 bins from 0 to 10 in increments of 1.
+Create a bubble plot of the observed data using 10 bins.
 
 **Solution**
+
+```{r}
+#| label: p_1
+
+plot(ox_sf["k"], 
+     nbreaks = 10, 
+     pch = 20, 
+     axes = TRUE, 
+     main = "Potassium (k) Bubble Plot"
+    )
+```
+
+
 
 # Problem 2 (Using **gstat**)
 
@@ -47,6 +74,23 @@ Create a `gstat` variogram object.  The cutoff distance should be 600.  The widt
 
 **Solution**
 
+```{r}
+#| label: p_2a-gs
+
+vhat_gs <- variogram(ox_gs, cutoff = 600, width = 16)
+plot(vhat_gs)
+```
+
+::: {.answer-box}
+The structure isn't super nice because there aren't good small distance values to be able to really estimate the sill/range and nugget, but it's not completely outside of what you would expect for a semivariogram.
+
+  - **Sill:** The sill is approximately 8000 ppm$^2$
+  - **Nugget:** The nugget is pretty hard to estimate from this, but maybe around 1500 ppm$^2$
+  - **Range:** The range is at approximately 140 m
+:::
+
+
+
 ## (b)
 
 Fit exponential, spherical, and Matern semivariogram models to the empirical semivariogram in (a) using WRSS.  Use `fit.kappa = TRUE` for the Matern model to estimate the associated smoothness parameter.
@@ -55,13 +99,76 @@ Use a table to summarize the estimated partial sill, range parameter, and nugget
 
 **Solution**
 
+```{r}
+#| label: p_2b-gs
+
+vfit_exp_gs <- fit.variogram(vhat_gs, 
+                             model = vgm(6500, "Exp", 140, 1500), 
+                             fit.method = 2)
+vfit_sph_gs <- fit.variogram(vhat_gs, 
+                             model = vgm(6500, "Sph", 140, 1500), 
+                             fit.method = 2)
+vfit_mat_gs <- fit.variogram(vhat_gs, 
+                             model = vgm(6500, "Mat", 140, 1500), 
+                             fit.method = 2, 
+                             fit.kappa = TRUE)
+
+psill_gs <- c(vfit_exp_gs$psill[2], vfit_sph_gs$psill[2], vfit_mat_gs$psill[2])
+range_gs <- c(vfit_exp_gs$range[2], vfit_sph_gs$range[2], vfit_mat_gs$range[2])
+nugget_gs <- c(vfit_exp_gs$psill[1], vfit_sph_gs$psill[1], vfit_mat_gs$psill[1])
+
+vfit_comp_gs <- tibble(
+  "Model" = c("Exponential", "Spherical", "Matérn"),
+  "Partial Sill" = round(psill_gs, 3),
+  "Range Parameter" = round(range_gs, 3),
+  "Nugget" = round(nugget_gs, 3),
+  "Smoothness" = round(c(NA, NA, vfit_mat_gs$kappa[2]), 3)
+)
+
+kbl(vfit_comp_gs) |> 
+  kable_styling(bootstrap_options = c("striped", "condensed"))
+```
+
+
 ## (c)
 
 In one plot, overlay each fitted variogram model from (c) to the empirical semivariogram found in (b).  Note: You will need to extract the relevant information from your gstat variogram object.  Also, you will probably want to use the `variogramLine` function to obtain values for the theoretical models of each fitted model.  Use this information to construct a single plot with the empirical semivariogram and the fitted models, making sure to label each model properly.
 
 **Solution**
 
-# Problem 3 (Using **geoR**)
+```{r}
+#| label: p_2c-gs
+
+h <- vhat_gs$dist
+
+line_exp_gs <- variogramLine(vfit_exp_gs, maxdist = max(h))
+line_sph_gs <- variogramLine(vfit_sph_gs, maxdist = max(h))
+line_mat_gs <- variogramLine(vfit_mat_gs, maxdist = max(h))
+
+line_exp_gs$model <- "Exponential"
+line_sph_gs$model <- "Spherical"
+line_mat_gs$model <- "Matérn"
+
+fitted_lines_gs <- rbind(line_exp_gs, line_sph_gs, line_mat_gs)
+
+line_comp_gs <- ggplot() +
+  geom_point(data = vhat_gs,
+             aes(x = dist, y = gamma),
+             shape = 20, size = 4, fill = "black") +
+  geom_line(data = fitted_lines_gs,
+            aes(x = dist, y = gamma, color = model),
+            linewidth = 1) +
+  coord_cartesian(ylim = c(0, max(vhat_gs$gamma) * 1.1)) +
+  labs(title = "WRSS Fitted Variograms (`gstat`)",
+       x = "Distance (m)",
+       y = "Semivariance (ppm²)",
+       color = "Fitted Models")
+
+print(line_comp_gs)
+```
+
+
+# Problem 2 (Using **geoR**)
 
 ## (a)
 
@@ -69,8 +176,60 @@ Use the geoR `variog` function to create an empirical semivariogram.  The `max.d
 
 **Solution**
 
+```{r}
+#| label: p_2a-gr
+#| results: hide
+
+vhat_gr <- variog(ox_gr, max.dist = 600, uvec = 20)
+plot(vhat_gr)
+```
+
+
 ## (b)
 (Fit exponential, spherical, and Matern variogram models to empirical semivariogram in (a) using WRSS.  Use `fix.kappa = FALSE` for the Matern model to estimate the associated smoothness parameter.  Use a table to summarize the estimated partial sill, range parameter, and nugget for each model.  Provide plots of each fitted variogram model to the empirical variogram.  What is the estimated smoothness parameter for the Matern model?
+
+```{r}
+#| label: p_2b-gr-fit
+#| results: hide
+
+vfit_exp_gr <- variofit(vhat_gr,
+                        ini.cov.pars = c(6500, 140),
+                        nugget = 1500,
+                        cov.model = "exponential",
+                        weights = "cressie")
+vfit_sph_gr <- variofit(vhat_gr,
+                        ini.cov.pars = c(6500, 140),
+                        nugget = 1500,
+                        cov.model = "spherical",
+                        weights = "cressie")
+vfit_mat_gr <- variofit(vhat_gr,
+                        ini.cov.pars = c(6500, 140),
+                        nugget = 1500,
+                        cov.model = "matern",
+                        weights = "cressie",
+                        fix.kappa = FALSE)
+```
+
+
+```{r}
+#| label: p_2b-gr-table
+
+psill_gr <- c(vfit_exp_gr$cov.pars[1], vfit_sph_gr$cov.pars[1], vfit_mat_gr$cov.pars[1])
+range_gr <- c(vfit_exp_gr$cov.pars[2], vfit_sph_gr$cov.pars[2], vfit_mat_gr$cov.pars[2])
+nugget_gr <- c(vfit_exp_gr$nugget, vfit_sph_gr$nugget, vfit_mat_gr$nugget)
+
+vfit_comp_gr <- tibble(
+  "Model" = c("Exponential", "Spherical", "Matérn"),
+  "Partial Sill" = round(psill_gr, 3),
+  "Range Parameter" = round(range_gr, 3),
+  "Nugget" = round(nugget_gr, 3),
+  "Smoothness" = round(c(NA, NA, vfit_mat_gr$kappa), 3)
+)
+
+kbl(vfit_comp_gr) |> 
+  kable_styling(bootstrap_options = c("striped", "condensed"))
+```
+
 
 ## (c)
 
@@ -78,17 +237,84 @@ In one plot, overlay each fitted variogram model from (b) to the empirical semiv
 
 **Solution**
 
+```{r}
+#| label: p_2c-gr
+
+plot(vhat_gr,
+     main = "WRSS Fitted Variograms (`geoR`)",
+     xlab = "Distance (m)",
+     ylab = "Semivariance (ppm²)",
+     pch = 20)
+
+col_pal <- RColorBrewer::brewer.pal(3, "Dark2")
+
+lines(vfit_exp_gr, col = col_pal[1], lwd = 2)
+lines(vfit_sph_gr, col = col_pal[2], lwd = 2)
+lines(vfit_mat_gr, col = col_pal[3], lwd = 2)
+
+legend("bottomright",
+       legend = c("Exponential", "Spherical", "Matérn"),
+       col = col_pal,
+       pch = 1,
+       lwd = 2)
+```
+
+
 ## (d)
 
 Use the `variog4` function to create a directional semivariogram (using the default direction).  Set `maxdist` to be 600. Use 10 bins. Plot this object.  What kind of anisotropy does this appear to be?  Why? (Note that there are few observations in certain bins, so there may be some "missing" data).
 
 **Solution**
 
+```{r}
+#| label: p_2d-gr
+#| results: hide
+
+v4_gr <- variog4(ox_gr, max.dist = 600, uvec = seq(0, 600, 60))
+plot(v4_gr)
+```
+
+::: {.answer-box}
+  This doesn't seem to show very clear evidence of anisotropy
+:::
+
+
 ## (e)
 
 Use REML to fit an omnidirectional spherical semivariogram model to the observed data.  Then fit a directional semivariogram model with `psiA = pi/2` and `psiR = 1`.  Make sure that the `psiA` and `psiR` parameters are not fixed during estimation for the second parameter.  For both models use initial values of 6000 for the partial sill, 50 for the range parameter, and 1000 for the nugget.  Note:  this will take a fair bit of time.  Which model should be preferred, in terms of AIC?
 
 **Solution**
+
+```{r}
+#| label: p_2e-gr
+#| results: hide
+
+lfit_omni <- cache_computation({
+  likfit(ox_gr, 
+         ini.cov.pars = c(6000, 50),
+         nugget = 1000,
+         cov.model = "spherical",
+         lik.method = "REML")
+}, cache_filename = "lfit_omni.rds", parallel = FALSE)
+
+lfit_aniso <- cache_computation({
+  likfit(ox_gr, 
+         ini.cov.pars = c(6000, 50),
+         nugget = 1000,
+         cov.model = "spherical",
+         lik.method = "REML",
+         psiA = pi/2,
+         fix.psiA = FALSE,
+         psiR = 1,
+         fix.psiR = FALSE)
+}, cache_filename = "lfit_aniso.rds", parallel = FALSE)
+```
+::: {.answer-box}
+  - Omnidirectional AIC: `r round(lfit_omni$AIC, 3)`
+  - Anisotropic AIC: `r round(lfit_aniso$AIC, 3)`
+  
+  So based on this, the omnidirectional (isotropic) model should be preferred.
+:::
 
 # Problem 3
 

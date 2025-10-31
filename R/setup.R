@@ -7,6 +7,11 @@ library(RColorBrewer)       # Color palettes to enable color-blind friendliness
 library(tidyverse)          # Essential R packages
 
 # --- Homework specific packages ---
+library(autoimage)
+library(geoR)
+library(gstat)
+library(sf)
+library(kableExtra)
 
 # --- Set seed for reproducibility ---
 set.seed(6384)
