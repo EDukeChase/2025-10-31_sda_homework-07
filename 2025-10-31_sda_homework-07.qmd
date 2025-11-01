@@ -275,7 +275,7 @@ plot(v4_gr)
 ```
 
 ::: {.answer-box}
-  This doesn't seem to show very clear evidence of anisotropy
+  This doesn't seem to show very clear evidence of anisotropy, partially due to the incompleteness of the data. All of the different directional semivariograms appear to have roughly the same sill, however there's not really a lot of information to go off of for comparing ranges, but just inferring with my eyes it looks like they might all have roughly similar ranges too. If I had to say a specific type of anisotropy I guess I would go with geometric though.
 :::
 
 
@@ -324,38 +324,106 @@ Write code to manually construct and plot an omnidirectional semivariogram for t
 
 Create a matrix that describes the indices of all unique pairs of points $(1, 2), (1, 3), (1, N), (2, 3), .., (2, N), \ldots, (N-1, N)$. Each row should be a different pair.
 
+```{r}
+#| label: p_3a
+
+coords <- as.matrix(ox[, c("x", "y")])
+resp_k <- ox$k
+n <- nrow(coords)
+
+indices <- t(combn(n, 2))
+```
+
+
 ## (b)
 
 Compute the distances between all unique pairs of observed points.  The distances for the unique pairs should be stored in a vector (in the same order as 1). **Print the range of these distances.**
+
+```{r}
+#| label: p_3b
+
+dist_vec <- as.vector(dist(coords))
+
+print(range(dist_vec))
+```
 
 ## (c)
 
 Compute the squared difference between the responses for all unique pairs of points (in the same order as 1). **Print the range of the square response differences**.
 
+```{r}
+#| label: p_3c
+
+sq_diff_vec <- as.vector(dist(resp_k)^2)
+
+print(range(sq_diff_vec))
+```
+
 ## (d)
 
 Determine the endpoints for your lag intervals/tolerance regions using a max distance of 600 and 16 bins. **Print the endpoints**.
+
+```{r}
+#| label: p_3d
+
+bin_endpoints <- seq(0, 600, length.out = 17)
+
+print(bin_endpoints)
+```
 
 ## (e)
 
 Use the `cut` function to bin the distances based on their associated tolerance region.
 
+```{r}
+#| label: p_3e
+
+dist_bins <- cut()
+```
+
 ## (f)
 
 Use the `tapply` function to average the distances in each bin using the labels from the cut function. **Print the results**.
+
+```{r}
+#| label: p_3f
+
+
+```
 
 ## (g)
 
 Use the `tapply` function to average the squared response differences in each bin using the labels from the cut function. Then divide by 2. **Print the results**.
 
+```{r}
+#| label: p_3g
+
+
+```
+
 ## (h)
 
 Plot the result of g (y-axis) vs the result of f (x-axis). Set the y-axis limits to be from 0 to 9000.
+
+```{r}
+#| label: p_3h
+
+
+```
 
 # Problem 4
 
 What is the difference between second-order and intrinsic stationarity for a geostatistical process?
 
+::: {.answer-box}
+  Answer here
+:::
+
+
 # Problem 5
 
 What is the difference between an isotropic and anisotropic geostatistical process?
+
+::: {.answer-box}
+  Answer here
+:::
