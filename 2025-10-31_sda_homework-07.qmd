@@ -38,7 +38,7 @@ load(here("data", "ox.rda"))
 ox_sf <- sf::st_as_sf(ox, coords = c("x", "y"))
 
 # Use the `sf` `data.frame` to construct a `gstat` object using `k` as the
-# response with a constant mean. 
+# response with a constant mean.
 ox_gs <- gstat(id = "k", formula = k ~ 1, data = ox_sf)
 
 # Construct a `geodata` object (from the **geoR** package) with `k` as the
@@ -56,12 +56,12 @@ Create a bubble plot of the observed data using 10 bins.
 ```{r}
 #| label: p_1
 
-plot(ox_sf["k"], 
-     nbreaks = 10, 
-     pch = 20, 
-     axes = TRUE, 
-     main = "Potassium (k) Bubble Plot"
-    )
+plot(ox_sf["k"],
+  nbreaks = 10,
+  pch = 20,
+  axes = TRUE,
+  main = "Potassium (k) Bubble Plot"
+)
 ```
 
 
@@ -77,7 +77,7 @@ Create a `gstat` variogram object.  The cutoff distance should be 600.  The widt
 ```{r}
 #| label: p_2a-gs
 
-vhat_gs <- variogram(ox_gs, cutoff = 600, width = 16)
+vhat_gs <- variogram(ox_gs, cutoff = 600, width = 600/16)
 plot(vhat_gs)
 ```
 
@@ -102,20 +102,35 @@ Use a table to summarize the estimated partial sill, range parameter, and nugget
 ```{r}
 #| label: p_2b-gs
 
-vfit_exp_gs <- fit.variogram(vhat_gs, 
-                             model = vgm(6500, "Exp", 140, 1500), 
-                             fit.method = 2)
-vfit_sph_gs <- fit.variogram(vhat_gs, 
-                             model = vgm(6500, "Sph", 140, 1500), 
-                             fit.method = 2)
-vfit_mat_gs <- fit.variogram(vhat_gs, 
-                             model = vgm(6500, "Mat", 140, 1500), 
-                             fit.method = 2, 
-                             fit.kappa = TRUE)
+vfit_exp_gs <- fit.variogram(vhat_gs,
+  model = vgm(6500, "Exp", 140, 1500),
+  fit.method = 2
+)
+vfit_sph_gs <- fit.variogram(vhat_gs,
+  model = vgm(6500, "Sph", 140, 1500),
+  fit.method = 2
+)
+vfit_mat_gs <- fit.variogram(vhat_gs,
+  model = vgm(6500, "Mat", 140, 1500),
+  fit.method = 2,
+  fit.kappa = TRUE
+)
 
-psill_gs <- c(vfit_exp_gs$psill[2], vfit_sph_gs$psill[2], vfit_mat_gs$psill[2])
-range_gs <- c(vfit_exp_gs$range[2], vfit_sph_gs$range[2], vfit_mat_gs$range[2])
-nugget_gs <- c(vfit_exp_gs$psill[1], vfit_sph_gs$psill[1], vfit_mat_gs$psill[1])
+psill_gs <- c(
+  vfit_exp_gs$psill[2],
+  vfit_sph_gs$psill[2],
+  vfit_mat_gs$psill[2]
+)
+range_gs <- c(
+  vfit_exp_gs$range[2],
+  vfit_sph_gs$range[2],
+  vfit_mat_gs$range[2]
+)
+nugget_gs <- c(
+  vfit_exp_gs$psill[1],
+  vfit_sph_gs$psill[1],
+  vfit_mat_gs$psill[1]
+)
 
 vfit_comp_gs <- tibble(
   "Model" = c("Exponential", "Spherical", "Matérn"),
@@ -125,7 +140,7 @@ vfit_comp_gs <- tibble(
   "Smoothness" = round(c(NA, NA, vfit_mat_gs$kappa[2]), 3)
 )
 
-kbl(vfit_comp_gs) |> 
+kbl(vfit_comp_gs) |>
   kable_styling(bootstrap_options = c("striped", "condensed"))
 ```
 
@@ -152,17 +167,23 @@ line_mat_gs$model <- "Matérn"
 fitted_lines_gs <- rbind(line_exp_gs, line_sph_gs, line_mat_gs)
 
 line_comp_gs <- ggplot() +
-  geom_point(data = vhat_gs,
-             aes(x = dist, y = gamma),
-             shape = 20, size = 4, fill = "black") +
-  geom_line(data = fitted_lines_gs,
-            aes(x = dist, y = gamma, color = model),
-            linewidth = 1) +
+  geom_point(
+    data = vhat_gs,
+    aes(x = dist, y = gamma),
+    shape = 20, size = 4, fill = "black"
+  ) +
+  geom_line(
+    data = fitted_lines_gs,
+    aes(x = dist, y = gamma, color = model),
+    linewidth = 1
+  ) +
   coord_cartesian(ylim = c(0, max(vhat_gs$gamma) * 1.1)) +
-  labs(title = "WRSS Fitted Variograms (`gstat`)",
-       x = "Distance (m)",
-       y = "Semivariance (ppm²)",
-       color = "Fitted Models")
+  labs(
+    title = "WRSS Fitted Variograms (`gstat`)",
+    x = "Distance (m)",
+    y = "Semivariance (ppm²)",
+    color = "Fitted Models"
+  )
 
 print(line_comp_gs)
 ```
@@ -193,30 +214,45 @@ plot(vhat_gr)
 #| results: hide
 
 vfit_exp_gr <- variofit(vhat_gr,
-                        ini.cov.pars = c(6500, 140),
-                        nugget = 1500,
-                        cov.model = "exponential",
-                        weights = "cressie")
+  ini.cov.pars = c(6500, 140),
+  nugget = 1500,
+  cov.model = "exponential",
+  weights = "cressie"
+)
 vfit_sph_gr <- variofit(vhat_gr,
-                        ini.cov.pars = c(6500, 140),
-                        nugget = 1500,
-                        cov.model = "spherical",
-                        weights = "cressie")
+  ini.cov.pars = c(6500, 140),
+  nugget = 1500,
+  cov.model = "spherical",
+  weights = "cressie"
+)
 vfit_mat_gr <- variofit(vhat_gr,
-                        ini.cov.pars = c(6500, 140),
-                        nugget = 1500,
-                        cov.model = "matern",
-                        weights = "cressie",
-                        fix.kappa = FALSE)
+  ini.cov.pars = c(6500, 140),
+  nugget = 1500,
+  cov.model = "matern",
+  weights = "cressie",
+  fix.kappa = FALSE
+)
 ```
 
 
 ```{r}
 #| label: p_2b-gr-table
 
-psill_gr <- c(vfit_exp_gr$cov.pars[1], vfit_sph_gr$cov.pars[1], vfit_mat_gr$cov.pars[1])
-range_gr <- c(vfit_exp_gr$cov.pars[2], vfit_sph_gr$cov.pars[2], vfit_mat_gr$cov.pars[2])
-nugget_gr <- c(vfit_exp_gr$nugget, vfit_sph_gr$nugget, vfit_mat_gr$nugget)
+psill_gr <- c(
+  vfit_exp_gr$cov.pars[1],
+  vfit_sph_gr$cov.pars[1],
+  vfit_mat_gr$cov.pars[1]
+)
+range_gr <- c(
+  vfit_exp_gr$cov.pars[2],
+  vfit_sph_gr$cov.pars[2],
+  vfit_mat_gr$cov.pars[2]
+)
+nugget_gr <- c(
+  vfit_exp_gr$nugget,
+  vfit_sph_gr$nugget,
+  vfit_mat_gr$nugget
+)
 
 vfit_comp_gr <- tibble(
   "Model" = c("Exponential", "Spherical", "Matérn"),
@@ -226,7 +262,7 @@ vfit_comp_gr <- tibble(
   "Smoothness" = round(c(NA, NA, vfit_mat_gr$kappa), 3)
 )
 
-kbl(vfit_comp_gr) |> 
+kbl(vfit_comp_gr) |>
   kable_styling(bootstrap_options = c("striped", "condensed"))
 ```
 
@@ -241,10 +277,11 @@ In one plot, overlay each fitted variogram model from (b) to the empirical semiv
 #| label: p_2c-gr
 
 plot(vhat_gr,
-     main = "WRSS Fitted Variograms (`geoR`)",
-     xlab = "Distance (m)",
-     ylab = "Semivariance (ppm²)",
-     pch = 20)
+  main = "WRSS Fitted Variograms (`geoR`)",
+  xlab = "Distance (m)",
+  ylab = "Semivariance (ppm²)",
+  pch = 20
+)
 
 col_pal <- RColorBrewer::brewer.pal(3, "Dark2")
 
@@ -253,10 +290,11 @@ lines(vfit_sph_gr, col = col_pal[2], lwd = 2)
 lines(vfit_mat_gr, col = col_pal[3], lwd = 2)
 
 legend("bottomright",
-       legend = c("Exponential", "Spherical", "Matérn"),
-       col = col_pal,
-       pch = 1,
-       lwd = 2)
+  legend = c("Exponential", "Spherical", "Matérn"),
+  col = col_pal,
+  pch = 1,
+  lwd = 2
+)
 ```
 
 
@@ -289,25 +327,35 @@ Use REML to fit an omnidirectional spherical semivariogram model to the observed
 #| label: p_2e-gr
 #| results: hide
 
-lfit_omni <- cache_computation({
-  likfit(ox_gr, 
-         ini.cov.pars = c(6000, 50),
-         nugget = 1000,
-         cov.model = "spherical",
-         lik.method = "REML")
-}, cache_filename = "lfit_omni.rds", parallel = FALSE)
+lfit_omni <- cache_computation(
+  {
+    likfit(ox_gr,
+      ini.cov.pars = c(6000, 50),
+      nugget = 1000,
+      cov.model = "spherical",
+      lik.method = "REML"
+    )
+  },
+  cache_filename = "lfit_omni.rds",
+  parallel = FALSE
+)
 
-lfit_aniso <- cache_computation({
-  likfit(ox_gr, 
-         ini.cov.pars = c(6000, 50),
-         nugget = 1000,
-         cov.model = "spherical",
-         lik.method = "REML",
-         psiA = pi/2,
-         fix.psiA = FALSE,
-         psiR = 1,
-         fix.psiR = FALSE)
-}, cache_filename = "lfit_aniso.rds", parallel = FALSE)
+lfit_aniso <- cache_computation(
+  {
+    likfit(ox_gr,
+      ini.cov.pars = c(6000, 50),
+      nugget = 1000,
+      cov.model = "spherical",
+      lik.method = "REML",
+      psiA = pi / 2,
+      fix.psiA = FALSE,
+      psiR = 1,
+      fix.psiR = FALSE
+    )
+  },
+  cache_filename = "lfit_aniso.rds",
+  parallel = FALSE
+)
 ```
 ::: {.answer-box}
   - Omnidirectional AIC: `r round(lfit_omni$AIC, 3)`
@@ -327,11 +375,7 @@ Create a matrix that describes the indices of all unique pairs of points $(1, 2)
 ```{r}
 #| label: p_3a
 
-coords <- as.matrix(ox[, c("x", "y")])
-resp_k <- ox$k
-n <- nrow(coords)
-
-indices <- t(combn(n, 2))
+indices <- t(as.matrix(combn(nrow(ox), 2)))
 ```
 
 
@@ -342,6 +386,7 @@ Compute the distances between all unique pairs of observed points.  The distance
 ```{r}
 #| label: p_3b
 
+coords <- as.matrix(ox[, c("x", "y")])
 dist_vec <- as.vector(dist(coords))
 
 print(range(dist_vec))
@@ -354,6 +399,7 @@ Compute the squared difference between the responses for all unique pairs of poi
 ```{r}
 #| label: p_3c
 
+resp_k <- ox$k
 sq_diff_vec <- as.vector(dist(resp_k)^2)
 
 print(range(sq_diff_vec))
@@ -366,9 +412,9 @@ Determine the endpoints for your lag intervals/tolerance regions using a max dis
 ```{r}
 #| label: p_3d
 
-bin_endpoints <- seq(0, 600, length.out = 17)
+bin_endpts <- seq(0, 600, length.out = 17)
 
-print(bin_endpoints)
+print(bin_endpts)
 ```
 
 ## (e)
@@ -378,7 +424,10 @@ Use the `cut` function to bin the distances based on their associated tolerance 
 ```{r}
 #| label: p_3e
 
-dist_bins <- cut()
+dist_bins <- cut(as.vector(dist_vec),
+  breaks = bin_endpts,
+  include.lowest = TRUE
+)
 ```
 
 ## (f)
@@ -388,7 +437,8 @@ Use the `tapply` function to average the distances in each bin using the labels 
 ```{r}
 #| label: p_3f
 
-
+avg_dist_bins <- tapply(dist_vec, dist_bins, mean, na.rm = TRUE)
+print(avg_dist_bins)
 ```
 
 ## (g)
@@ -398,7 +448,8 @@ Use the `tapply` function to average the squared response differences in each bi
 ```{r}
 #| label: p_3g
 
-
+semivar_bins <- tapply(sq_diff_vec, dist_bins, mean, na.rm = TRUE) /2
+print(semivar_bins)
 ```
 
 ## (h)
@@ -408,15 +459,32 @@ Plot the result of g (y-axis) vs the result of f (x-axis). Set the y-axis limits
 ```{r}
 #| label: p_3h
 
+man_var <- data.frame(avg_dist_bins, semivar_bins)
 
+man_var_plot <- ggplot(man_var) +
+  geom_point(
+    aes(x = avg_dist_bins, y = semivar_bins),
+    shape = 20,
+    size = 4,
+    fill = "black"
+  ) +
+  coord_cartesian(xlim = c(0, 650), ylim = c(0, 9000)) +
+  labs(
+    title = "Manually Calculated Semivariogram",
+    x = "Distance (m)",
+    y = "Semivariance (ppm²)"
+  )
+
+print(man_var_plot)
 ```
+
 
 # Problem 4
 
 What is the difference between second-order and intrinsic stationarity for a geostatistical process?
 
 ::: {.answer-box}
-  Answer here
+  Both second-order and instrinsic stationarity for a geostatistical process require a constant mean, $E\left[Z(s)\right] = \mu \quad \forall \; s \in D$, but second-order stationarity requires that the covariance between two observations $s_i$ and $s_j$ exists, is finite, and depends on the distance and direction between them, while for intrinsic stationarity, then the variogram ($\gamma$) must exist, and is a function of the distance and direction between $s_i$ and $s_j$, but does not require finite variance unlike second-order stationarity.
 :::
 
 
@@ -425,5 +493,5 @@ What is the difference between second-order and intrinsic stationarity for a geo
 What is the difference between an isotropic and anisotropic geostatistical process?
 
 ::: {.answer-box}
-  Answer here
+  A process is isotropic if the direction between $s_i$ and $s_j$ does not make any difference in the final value of $C(\cdot)$ or $2\gamma(\cdot)$, whereas for an anisotropic process the direction between  points does make a difference.
 :::
